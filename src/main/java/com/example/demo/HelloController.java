@@ -34,7 +34,7 @@ public class HelloController {
         //chooser.getExtensionFilters().add(extFilter);
         //chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
         chooser.setTitle("上传上期文件夹");
-        File file = chooser.showDialog(Window.getWindows().get(0));
+        File file = chooser.showDialog(Window.impl_getWindows().next());
         if (file != null) {
             try {
                 // 解析文件夹
@@ -53,7 +53,7 @@ public class HelloController {
         DirectoryChooser chooser = new DirectoryChooser();
         //chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
         chooser.setTitle("上传当期文件夹");
-        File file = chooser.showDialog(Window.getWindows().get(0));
+        File file = chooser.showDialog(Window.impl_getWindows().next());
         if (file != null) {
             try {
                 // 解析文件夹
