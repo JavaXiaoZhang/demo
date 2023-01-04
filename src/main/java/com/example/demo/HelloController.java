@@ -1,9 +1,15 @@
 package com.example.demo;
 
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import javafx.stage.Window;
+import org.apache.commons.collections4.MultiValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
@@ -11,8 +17,7 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.*;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,90 +25,45 @@ import java.util.List;
 import java.util.Map;
 
 public class HelloController {
-    static final String compareFile = "D:\\compare.xls";
-    static final String[] titles = {"报表代码", "指标代码", "本期数据值", "上期数据值", "比上期（万元）", "比上期（%）", "备注"};
+    static final String compareFile = "C:\\compare.xls";
+    static final String[] titles = {"报表代码", "指标位置", "指标代码", "指标名称", "本期数据值", "上期数据值", "比上期（万元）", "比上期（%）", "备注"};
     Map<String, List<String>> compareMap = new HashMap<>();
     Map<String, List<Double>> previousMap = new HashMap<>();
     Map<String, List<Double>> currentMap = new HashMap<>();
+    MultiValuedMap<String, String> locationMap = new ArrayListValuedHashMap<>();
 
     @FXML
-    protected void onPreviousButtonClick() {
-        DirectoryChooser chooser = new DirectoryChooser();
+    protected void onUploadButtonClick(){
+        FileChooser chooser = new FileChooser();
         //设置文件上传类型
-        //FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("excel files (*.xlsx)", "*.xlsx");
-        //chooser.getExtensionFilters().add(extFilter);
-        //chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
-        chooser.setTitle("上传上期文件夹");
-        File file = chooser.showDialog(Window.impl_getWindows().next());
-        if (file != null) {
-            try {
-                // 解析文件夹
-                doHandlerDirectory(file, previousMap);
-            } catch (Exception e) {
-                Alert alert = new Alert(Alert.AlertType.WARNING);
-                alert.titleProperty().set("警告");
-                alert.headerTextProperty().set(e.getMessage());
-                alert.showAndWait();
-            }
+        FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("excel files (*.xls)", "*.xls","*.xlsx");
+        chooser.getExtensionFilters().add(extFilter);
+        chooser.setTitle("上传校验文件");
+        File file = chooser.showOpenDialog(Window.impl_getWindows().next());
+        try {
+            doHandlerCompareFile(file);
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.titleProperty().set("警告");
+            alert.headerTextProperty().set(e.getMessage());
+            alert.showAndWait();
         }
     }
 
     @FXML
-    protected void onCurrentButtonClick() {
-        DirectoryChooser chooser = new DirectoryChooser();
-        //chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
-        chooser.setTitle("上传当期文件夹");
-        File file = chooser.showDialog(Window.impl_getWindows().next());
-        if (file != null) {
-            try {
-                // 解析文件夹
-                doHandlerDirectory(file, currentMap);
-            } catch (Exception e) {
-                Alert alert = new Alert(Alert.AlertType.WARNING);
-                alert.titleProperty().set("警告");
-                alert.headerTextProperty().set(e.getMessage());
-                alert.showAndWait();
-            }
-        }
+    protected void onDownloadButtonClick(){
+
     }
 
-    private void doHandlerDirectory(File file, Map<String, List<Double>> valueMap) throws Exception {
-        // 解析比对文件
-        doHandlerCompareFile();
-
-        // 将上次内容清空
-        valueMap.clear();
-
-        for (File listFile : file.listFiles()) {
-            Workbook workbook = new HSSFWorkbook(new FileInputStream(listFile));
-            for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
-                Sheet sheet = workbook.getSheetAt(i);
-                // 报表代码
-                String sheetCode = sheet.getSheetName();
-                // 若比较文档中不包含该报表代码，则不用处理
-                List<String> indexList = compareMap.get(sheetCode);
-                if (indexList == null || indexList.isEmpty()) {
-                    continue;
-                }
-
-                List<Double> valueList = new ArrayList<>();
-                valueMap.put(sheetCode, valueList);
-
-                for (String index : indexList) {
-                    char ch = index.charAt(0);
-                    int rowIndex = Integer.valueOf(index.substring(1)) - 1;
-                    int cellIndex = ch - 'A';
-                    valueList.add(sheet.getRow(rowIndex).getCell(cellIndex).getNumericCellValue());
-                }
+    @FXML
+    protected void onStartButtonClick() {
+        try {
+            if (previousMap.isEmpty()) {
+                throw new RuntimeException("请上传上期文件夹");
             }
-        }
-
-        // 如果当期不为空，上期为空则报错提示
-        if (!currentMap.isEmpty() && previousMap.isEmpty()) {
-            throw new RuntimeException("请上传当期文件夹");
-        }
-
-        if (!currentMap.isEmpty() && !previousMap.isEmpty()) {
+            if (currentMap.isEmpty()) {
+                throw new RuntimeException("请上传当期文件夹");
+            }
             // 开始比对
             HSSFWorkbook wb = new HSSFWorkbook();
             HSSFSheet sheet = wb.createSheet("数据比对结果");
@@ -180,20 +140,115 @@ public class HelloController {
                 }
             }
 
-            File resultFile = new File("D:\\数据比对结果.xls");
+            File resultFile = new File("C:\\数据比对结果.xls");
             wb.write(resultFile);
 
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.titleProperty().set("解析完成");
-            alert.headerTextProperty().set("已生成结果文件 D:\\数据比对结果.xls");
+            alert.headerTextProperty().set("已生成结果文件 C:\\数据比对结果.xls");
+            alert.showAndWait();
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.titleProperty().set("警告");
+            alert.headerTextProperty().set(e.getMessage());
             alert.showAndWait();
         }
     }
 
-    private void doHandlerCompareFile() throws Exception {
-        File file = new File(compareFile);
-        if (!file.exists()) {
-            throw new RuntimeException("请把比对文件放在指定位置 D:\\compare.xls");
+    @FXML
+    protected void onCompareButtonClick() throws IOException {
+        // 创建新的stage
+        Stage secondStage = new Stage();
+        FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("second-view.fxml"));
+        Scene secondScene = new Scene(fxmlLoader.load(), 320, 240);
+        secondStage.setTitle("校验文件");
+        secondStage.setScene(secondScene);
+        secondStage.show();
+    }
+
+    @FXML
+    protected void onPreviousButtonClick() {
+        String property = System.getProperty("user.dir");
+        System.out.println(property);
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("上传上期文件夹");
+        File file = chooser.showDialog(Window.impl_getWindows().next());
+        if (file != null) {
+            try {
+                // 解析文件夹
+                doHandlerDirectory(file, previousMap);
+            } catch (Exception e) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.titleProperty().set("警告");
+                alert.headerTextProperty().set(e.getMessage());
+                alert.showAndWait();
+            }
+        }
+    }
+
+    @FXML
+    protected void onCurrentButtonClick() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        //chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
+        chooser.setTitle("上传当期文件夹");
+        File file = chooser.showDialog(Window.impl_getWindows().next());
+        if (file != null) {
+            try {
+                // 解析文件夹
+                doHandlerDirectory(file, currentMap);
+            } catch (Exception e) {
+                Alert alert = new Alert(Alert.AlertType.WARNING);
+                alert.titleProperty().set("警告");
+                alert.headerTextProperty().set(e.getMessage());
+                alert.showAndWait();
+            }
+        }
+    }
+
+    private void doHandlerDirectory(File file, Map<String, List<Double>> valueMap) throws Exception {
+        // 解析比对文件
+        doHandlerCompareFile(null);
+
+        // 将上次内容清空
+        valueMap.clear();
+
+        for (File listFile : file.listFiles()) {
+            Workbook workbook = new HSSFWorkbook(new FileInputStream(listFile));
+            for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+                Sheet sheet = workbook.getSheetAt(i);
+                // 报表代码
+                String sheetCode = sheet.getSheetName();
+                // 若比较文档中不包含该报表代码，则不用处理
+                List<String> indexList = compareMap.get(sheetCode);
+                if (indexList == null || indexList.isEmpty()) {
+                    continue;
+                }
+
+                List<Double> valueList = new ArrayList<>();
+                valueMap.put(sheetCode, valueList);
+
+                for (String index : indexList) {
+                    char ch = index.charAt(0);
+                    int rowIndex = Integer.valueOf(index.substring(1)) - 1;
+                    int cellIndex = ch - 'A';
+                    valueList.add(sheet.getRow(rowIndex).getCell(cellIndex).getNumericCellValue());
+                }
+            }
+        }
+
+
+    }
+
+    private void doHandlerCompareFile(File file) throws Exception {
+        if (file == null) {
+            file = new File(compareFile);
+        }else {
+            FileReader fileReader = new FileReader(file);
+            FileWriter fileWriter = new FileWriter(compareFile);
+            fileWriter.write(fileReader.read());
+        }
+        if (file == null || !file.exists()) {
+            throw new RuntimeException("请手动上传校验文件或将校验文件放在指定位置 C:\\compare.xls");
         }
 
         // 将上次内容清空
@@ -204,15 +259,19 @@ public class HelloController {
         for (int i = 0; i <= compareWorkbookSheet.getLastRowNum(); i++) {
             Row row = compareWorkbookSheet.getRow(i);
             String sheetCode = row.getCell(0).getStringCellValue().trim();
-            String indexCode = row.getCell(1).getStringCellValue().trim();
-            List<String> indexCodeList;
+            String indexLocation = row.getCell(1).getStringCellValue().trim(); //位置代码
+            String indexCode = row.getCell(2).getStringCellValue().trim(); //指标代码
+            String indexName = row.getCell(3).getStringCellValue().trim(); //指标名称
+            List<String> indexLocationList;
             if (compareMap.containsKey(sheetCode)) {
-                indexCodeList = compareMap.get(sheetCode);
+                indexLocationList = compareMap.get(sheetCode);
             } else {
-                indexCodeList = new ArrayList<>();
-                compareMap.put(sheetCode, indexCodeList);
+                indexLocationList = new ArrayList<>();
+                compareMap.put(sheetCode, indexLocationList);
             }
-            indexCodeList.add(indexCode);
+            locationMap.put(indexLocation, indexCode);
+            locationMap.put(indexLocation, indexName);
+            indexLocationList.add(indexLocation);
         }
     }
 }
