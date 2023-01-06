@@ -2,14 +2,18 @@ package com.example.demo;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.io.IOUtils;
 import org.apache.poi.hssf.usermodel.HSSFCell;
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
@@ -25,12 +29,17 @@ import java.util.List;
 import java.util.Map;
 
 public class HelloController {
-    static final String compareFile = "C:\\compare.xls";
+    static final String USER_DIR = System.getProperty("user.dir");
+    static final String COMPARE_FILE_PATH = USER_DIR + File.separator + "compare.xls";
     static final String[] titles = {"报表代码", "指标位置", "指标代码", "指标名称", "本期数据值", "上期数据值", "比上期（万元）", "比上期（%）", "备注"};
     Map<String, List<String>> compareMap = new HashMap<>();
     Map<String, List<Double>> previousMap = new HashMap<>();
     Map<String, List<Double>> currentMap = new HashMap<>();
     MultiValuedMap<String, String> locationMap = new ArrayListValuedHashMap<>();
+    private StringBuilder stringBuilder = new StringBuilder();
+
+    @FXML
+    Button compareButton;
 
     @FXML
     protected void onUploadButtonClick(){
@@ -43,6 +52,7 @@ public class HelloController {
         try {
             doHandlerCompareFile(file);
         } catch (Exception e) {
+            e.printStackTrace();
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.titleProperty().set("警告");
             alert.headerTextProperty().set(e.getMessage());
@@ -52,7 +62,18 @@ public class HelloController {
 
     @FXML
     protected void onDownloadButtonClick(){
-
+        FileWriter fileWriter = null;
+        try {
+            fileWriter = new FileWriter(COMPARE_FILE_PATH);
+            fileWriter.write(stringBuilder.toString());
+        } catch (IOException e) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.titleProperty().set("警告");
+            alert.headerTextProperty().set(e.getMessage());
+            alert.showAndWait();
+        } finally {
+            IOUtils.closeQuietly(fileWriter);
+        }
     }
 
     @FXML
@@ -160,7 +181,11 @@ public class HelloController {
         // 创建新的stage
         Stage secondStage = new Stage();
         FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("second-view.fxml"));
-        Scene secondScene = new Scene(fxmlLoader.load(), 320, 240);
+        Parent root = fxmlLoader.load();
+        Label node = (Label) root.getChildrenUnmodifiable().get(0);
+        node.setText("校验文件默认位置 " + COMPARE_FILE_PATH);
+        Scene secondScene = new Scene(root, 320, 240);
+
         secondStage.setTitle("校验文件");
         secondStage.setScene(secondScene);
         secondStage.show();
@@ -168,8 +193,6 @@ public class HelloController {
 
     @FXML
     protected void onPreviousButtonClick() {
-        String property = System.getProperty("user.dir");
-        System.out.println(property);
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("上传上期文件夹");
         File file = chooser.showDialog(Window.impl_getWindows().next());
@@ -241,14 +264,25 @@ public class HelloController {
 
     private void doHandlerCompareFile(File file) throws Exception {
         if (file == null) {
-            file = new File(compareFile);
+            file = new File(COMPARE_FILE_PATH);
         }else {
-            FileReader fileReader = new FileReader(file);
-            FileWriter fileWriter = new FileWriter(compareFile);
-            fileWriter.write(fileReader.read());
+            BufferedReader reader = null;
+            //FileWriter fileWriter = null;
+            try {
+                reader = new BufferedReader(new FileReader(file));
+                //fileWriter = new FileWriter(COMPARE_FILE_PATH);
+                String line;
+                stringBuilder.delete(0, stringBuilder.length());
+                while ((line = reader.readLine()) != null) {
+                    stringBuilder.append(line);
+                }
+            }finally {
+                IOUtils.closeQuietly(reader);
+            }
         }
+
         if (file == null || !file.exists()) {
-            throw new RuntimeException("请手动上传校验文件或将校验文件放在指定位置 C:\\compare.xls");
+            throw new RuntimeException("请手动上传校验文件或将校验文件放在指定位置 " + COMPARE_FILE_PATH);
         }
 
         // 将上次内容清空
@@ -258,6 +292,9 @@ public class HelloController {
         Sheet compareWorkbookSheet = compareWorkbook.getSheetAt(0);
         for (int i = 0; i <= compareWorkbookSheet.getLastRowNum(); i++) {
             Row row = compareWorkbookSheet.getRow(i);
+            if (row.getLastCellNum() < 4) {
+                throw new RuntimeException("请填写完整第" + (i+1) + "行校验内容");
+            }
             String sheetCode = row.getCell(0).getStringCellValue().trim();
             String indexLocation = row.getCell(1).getStringCellValue().trim(); //位置代码
             String indexCode = row.getCell(2).getStringCellValue().trim(); //指标代码

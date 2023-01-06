@@ -7,7 +7,7 @@
 <VBox alignment="CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.example.demo.HelloController">
 
-    <Label fx:id="label" text="校验文件默认位置 C:\\compare.xls"/>
+    <Label text="校验文件默认位置 "/>
     <Button text="上传校验文件" onAction="#onUploadButtonClick"/>
     <Button text="下载校验文件" onAction="#onDownloadButtonClick"/>
 </VBox>
