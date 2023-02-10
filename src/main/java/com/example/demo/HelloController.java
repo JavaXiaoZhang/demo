@@ -48,8 +48,8 @@ public class HelloController {
         FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("excel files (*.xls)", "*.xls", "*.xlsx");
         chooser.getExtensionFilters().add(extFilter);
         chooser.setTitle("上传校验文件");
-        //File file = chooser.showOpenDialog(Window.impl_getWindows().next());
-        File file = chooser.showOpenDialog(Window.getWindows().get(1));
+        File file = chooser.showOpenDialog(Window.impl_getWindows().next());
+        //File file = chooser.showOpenDialog(Window.getWindows().get(1));
         try {
             doHandlerCompareFile(file);
         } catch (Exception e) {
@@ -224,8 +224,8 @@ public class HelloController {
     protected void onPreviousButtonClick() {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("上传上期文件夹");
-        //File file = chooser.showDialog(Window.impl_getWindows().next());
-        File file = chooser.showDialog(Window.getWindows().get(0));
+        File file = chooser.showDialog(Window.impl_getWindows().next());
+        //File file = chooser.showDialog(Window.getWindows().get(0));
         if (file != null) {
             try {
                 // 解析文件夹
@@ -244,8 +244,8 @@ public class HelloController {
         DirectoryChooser chooser = new DirectoryChooser();
         //chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
         chooser.setTitle("上传当期文件夹");
-        //File file = chooser.showDialog(Window.impl_getWindows().next());
-        File file = chooser.showDialog(Window.getWindows().get(0));
+        File file = chooser.showDialog(Window.impl_getWindows().next());
+        //File file = chooser.showDialog(Window.getWindows().get(0));
         if (file != null) {
             try {
                 // 解析文件夹
