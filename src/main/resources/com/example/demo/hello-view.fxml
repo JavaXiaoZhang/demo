@@ -9,7 +9,7 @@
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
     </padding>
-    <Button fx:id="compareButton"  alignment="TOP_LEFT" text="校验文件" onAction="#onCompareButtonClick"/>
+    <!--<Button fx:id="compareButton"  alignment="TOP_LEFT" text="校验文件" onAction="#onCompareButtonClick"/>-->
 
     <VBox alignment="CENTER" spacing="20.0">
         <Button text="上传上期文件夹" onAction="#onPreviousButtonClick"/>
