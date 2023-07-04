@@ -107,107 +107,105 @@ public class HelloController {
 
     @FXML
     protected void onStartButtonClick() {
+        if (fileMap.get("previousFile") == null) {
+            throw new RuntimeException("请上传上期文件夹");
+        }
+        if (fileMap.get("currentFile") == null) {
+            throw new RuntimeException("请上传当期文件夹");
+        }
+        FileOutputStream outputStream = null;
         try {
-            if (fileMap.get("previousFile") == null) {
-                throw new RuntimeException("请上传上期文件夹");
-            }
-            if (fileMap.get("currentFile") == null) {
-                throw new RuntimeException("请上传当期文件夹");
-            }
-            FileOutputStream outputStream = null;
-            try {
-                for (File currentMultipartFile : fileMap.get("currentFile").listFiles()) {
-                    // 根据当月文件获取报表代码
-                    String filename = FilenameUtils.getBaseName(currentMultipartFile.getName());
-                    String code = filename.substring(0, filename.indexOf("-"));
-                    // 20230607新增 人行报表以机构号开头，报表名结尾
-                    if (filename.matches("^(\\d{10})#.+")) {
-                        String[] split = filename.split("#");
-                        code = split[0] + split[split.length - 1];
-                    }
-                    // 根据当月报表代码查找上月文件
-                    for (File previousMultipartFile : fileMap.get("previousFile").listFiles()) {
-                        if (matchCode(FilenameUtils.getBaseName(previousMultipartFile.getName()), code)) {
-                            HSSFWorkbook currentWorkbook = null;
-                            HSSFWorkbook previousWorkbook = null;
-                            // 开始比对
-                            try {
-                                currentWorkbook = new HSSFWorkbook(new FileInputStream(currentMultipartFile));
-                                previousWorkbook = new HSSFWorkbook(new FileInputStream(previousMultipartFile));
-                                // 原当期sheet
-                                HSSFSheet currentOriginalSheet = currentWorkbook.getSheetAt(0);
-                                // 原上期sheet
-                                HSSFSheet previousOriginalSheet = previousWorkbook.getSheetAt(0);
-                                HSSFSheet previousCloneSheet = currentWorkbook.createSheet("上期数据");
-                                CopySheetUtils.copySheets(previousCloneSheet, previousOriginalSheet);
-                                // 比上期差值sheet
-                                HSSFSheet diffSheet = currentWorkbook.cloneSheet(0);
-                                // 比上期百分比sheet
-                                HSSFSheet ratioSheet = currentWorkbook.cloneSheet(0);
+            for (File currentMultipartFile : fileMap.get("currentFile").listFiles()) {
+                // 根据当月文件获取报表代码
+                String filename = FilenameUtils.getBaseName(currentMultipartFile.getName());
+                String code = filename.substring(0, filename.indexOf("-"));
+                // 20230607新增 人行报表以机构号开头，报表名结尾
+                if (filename.matches("^(\\d{10})#.+")) {
+                    String[] split = filename.split("#");
+                    code = split[0] + split[split.length - 1];
+                }
+                // 根据当月报表代码查找上月文件
+                for (File previousMultipartFile : fileMap.get("previousFile").listFiles()) {
+                    if (matchCode(FilenameUtils.getBaseName(previousMultipartFile.getName()), code)) {
+                        HSSFWorkbook currentWorkbook = null;
+                        HSSFWorkbook previousWorkbook = null;
+                        // 开始比对
+                        try {
+                            currentWorkbook = new HSSFWorkbook(new FileInputStream(currentMultipartFile));
+                            previousWorkbook = new HSSFWorkbook(new FileInputStream(previousMultipartFile));
+                            // 原当期sheet
+                            //HSSFSheet currentOriginalSheet = currentWorkbook.getSheetAt(0);
+                            // 原上期sheet
+                            HSSFSheet previousOriginalSheet = previousWorkbook.getSheetAt(0);
+                            HSSFSheet previousCloneSheet = currentWorkbook.createSheet("上期数据");
+                            CopySheetUtils.copySheets(previousCloneSheet, previousOriginalSheet);
+                            // 比上期差值sheet
+                            HSSFSheet diffSheet = currentWorkbook.cloneSheet(0);
+                            // 比上期百分比sheet
+                            HSSFSheet ratioSheet = currentWorkbook.cloneSheet(0);
 
-                                currentWorkbook.setSheetName(0, "当期数据");
-                                currentWorkbook.setSheetName(2, "比上期差值");
-                                currentWorkbook.setSheetName(3, "比上期百分比");
-                                currentWorkbook.setActiveSheet(2);
+                            currentWorkbook.setSheetName(0, "当期数据");
+                            currentWorkbook.setSheetName(2, "比上期差值");
+                            currentWorkbook.setSheetName(3, "比上期百分比");
+                            currentWorkbook.setActiveSheet(2);
 
-                                // 1.找到当月文件第一个数字单元格的位置
+                            // 1.找到当月文件第一个数字单元格的位置
                             /*CellAddress address = getCellAddress(currentOriginalSheet);
                             if (address == null) {
                                 continue;
                             }*/
-                                // 2.基于当月文件，从第一个数字单元格的位置开始进行比对，比对时直接在当月文件上修改
-                                for (int i = 0; i < diffSheet.getLastRowNum(); i++) {
-                                    HSSFRow currentRow = diffSheet.getRow(i);
-                                    HSSFRow previousRow = previousOriginalSheet.getRow(i);
-                                    if (currentRow == null || previousRow == null) {
+                            // 2.基于当月文件，从第一个数字单元格的位置开始进行比对，比对时直接在当月文件上修改
+                            for (int i = 0; i < diffSheet.getLastRowNum(); i++) {
+                                HSSFRow currentRow = diffSheet.getRow(i);
+                                HSSFRow previousRow = previousOriginalSheet.getRow(i);
+                                if (currentRow == null || previousRow == null) {
+                                    continue;
+                                }
+                                for (int j = 0; j < currentRow.getLastCellNum(); j++) {
+                                    HSSFCell cell = currentRow.getCell(j);
+                                    Double currentValue = getCellValue(cell);
+                                    HSSFCell previousCell = previousRow.getCell(j);
+                                    Double previousValue = getCellValue(previousCell);
+                                    if (currentValue == null || previousValue == null) {
                                         continue;
                                     }
-                                    for (int j = 0; j < currentRow.getLastCellNum(); j++) {
-                                        HSSFCell cell = currentRow.getCell(j);
-                                        Double currentValue = getCellValue(cell);
-                                        HSSFCell previousCell = previousRow.getCell(j);
-                                        Double previousValue = getCellValue(previousCell);
-                                        if (currentValue == null || previousValue == null) {
-                                            continue;
-                                        }
-                                        // 比对之后赋值
-                                        if (cell.getCellTypeEnum() == CellType.FORMULA) {
-                                            cell.setCellFormula(null);
-                                            cell.setCellType(CellType.STRING);
-                                        }
-                                        cell.setCellValue(currentValue - previousValue);
-                                        HSSFCell cell2 = ratioSheet.getRow(i).getCell(j);
-                                        if (previousValue != 0) {
-                                            NumberFormat numberFormat = NumberFormat.getInstance();
-                                            numberFormat.setMinimumFractionDigits(2);
-                                            cell2.setCellType(CellType.STRING);
-                                            cell2.setCellValue(numberFormat.format((currentValue - previousValue) / Math.abs(previousValue) * 100) + "%");
-                                        }
-                                        // 修改单元格样式
-                                        CellStyle cellStyle = getCellStyle(currentWorkbook, cell, currentValue, previousValue);
-                                        cell.setCellStyle(cellStyle);
-                                        cell2.setCellStyle(cellStyle);
+                                    // 比对之后赋值
+                                    if (cell.getCellTypeEnum() == CellType.FORMULA) {
+                                        cell.setCellFormula(null);
+                                        cell.setCellType(CellType.STRING);
                                     }
+                                    cell.setCellValue(currentValue - previousValue);
+                                    HSSFCell cell2 = ratioSheet.getRow(i).getCell(j);
+                                    if (previousValue != 0) {
+                                        NumberFormat numberFormat = NumberFormat.getInstance();
+                                        numberFormat.setMinimumFractionDigits(2);
+                                        cell2.setCellType(CellType.STRING);
+                                        cell2.setCellValue(numberFormat.format((currentValue - previousValue) / Math.abs(previousValue) * 100) + "%");
+                                    }
+                                    // 修改单元格样式
+                                    CellStyle cellStyle = getCellStyle(currentWorkbook, cell, currentValue, previousValue);
+                                    cell.setCellStyle(cellStyle);
+                                    cell2.setCellStyle(cellStyle);
                                 }
-                                currentWorkbook.write(new File(filename + "_" + RESULT_FILE_SUFFIX));
-                            } catch (Exception e) {
-                                //logger.error("", e);
-                            } finally {
-                                IOUtils.closeQuietly(currentWorkbook);
-                                IOUtils.closeQuietly(previousWorkbook);
-                                break;
                             }
+                            currentWorkbook.write(new File(filename + "_" + RESULT_FILE_SUFFIX));
+                        } catch (Exception e) {
+                            //logger.error("", e);
+                        } finally {
+                            IOUtils.closeQuietly(currentWorkbook);
+                            IOUtils.closeQuietly(previousWorkbook);
+                            break;
                         }
                     }
                 }
-
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.titleProperty().set("解析完成");
-                //alert.headerTextProperty().set("已生成结果文件 " + resultFileName);
-                alert.showAndWait();
-            } catch (Exception e) {
-                alert(Alert.AlertType.WARNING, "警告", e.getMessage());
             }
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.titleProperty().set("解析完成");
+            alert.headerTextProperty().set("已生成结果文件");
+            alert.showAndWait();
+        } catch (Exception e) {
+            alert(Alert.AlertType.WARNING, "警告", e.getMessage());
         }
     }
     /*@FXML
@@ -239,7 +237,7 @@ public class HelloController {
     @FXML
     protected void onCurrentButtonClick() {
         DirectoryChooser chooser = new DirectoryChooser();
-        //chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
+        chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
         chooser.setTitle("上传当期文件夹");
         File file = chooser.showDialog(Window.impl_getWindows().next());
         //File file = chooser.showDialog(Window.getWindows().get(0));
