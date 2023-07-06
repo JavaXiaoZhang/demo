@@ -113,7 +113,6 @@ public class HelloController {
         if (fileMap.get("currentFile") == null) {
             throw new RuntimeException("请上传当期文件夹");
         }
-        FileOutputStream outputStream = null;
         try {
             for (File currentMultipartFile : fileMap.get("currentFile").listFiles()) {
                 // 根据当月文件获取报表代码
@@ -226,9 +225,10 @@ public class HelloController {
     @FXML
     protected void onPreviousButtonClick() {
         DirectoryChooser chooser = new DirectoryChooser();
+        //chooser.setInitialDirectory(new File("C:\\Users\\zzqq\\Desktop\\Excel解析程序"));
         chooser.setTitle("上传上期文件夹");
-        File file = chooser.showDialog(Window.impl_getWindows().next());
-        //File file = chooser.showDialog(Window.getWindows().get(0));
+        //File file = chooser.showDialog(Window.impl_getWindows().next());
+        File file = chooser.showDialog(Window.getWindows().get(0));
         if (file != null) {
             fileMap.put("previousFile", file);
         }
@@ -237,10 +237,10 @@ public class HelloController {
     @FXML
     protected void onCurrentButtonClick() {
         DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setInitialDirectory(new File("E:\\workspace\\demo"));
+        //chooser.setInitialDirectory(new File("C:\\Users\\zzqq\\Desktop\\Excel解析程序"));
         chooser.setTitle("上传当期文件夹");
-        File file = chooser.showDialog(Window.impl_getWindows().next());
-        //File file = chooser.showDialog(Window.getWindows().get(0));
+        //File file = chooser.showDialog(Window.impl_getWindows().next());
+        File file = chooser.showDialog(Window.getWindows().get(0));
         if (file != null) {
             fileMap.put("currentFile", file);
         }
